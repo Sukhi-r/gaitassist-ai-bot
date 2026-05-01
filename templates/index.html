@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NeuroStep AI</title>
+    <link rel="stylesheet" href="/static/style.css">
+
+<script>
+
+// 🔊 TEXT TO SPEECH
+function speak(text) {
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.lang = "en-US";
+    window.speechSynthesis.speak(speech);
+}
+
+// 🎤 VOICE INPUT
+function startListening() {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+    recognition.onresult = function(event) {
+        let text = event.results[0][0].transcript;
+        document.getElementById("userInput").value = text;
+        sendMessage();
+    };
+
+    recognition.start();
+}
+
+// 📍 HOSPITAL FINDER
+function findHospitals() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(showHospitals);
+    } else {
+        alert("Geolocation not supported");
+    }
+}
+
+function showHospitals(position) {
+    let lat = position.coords.latitude;
+    let lon = position.coords.longitude;
+
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=hospital&limit=5&viewbox=${lon-0.1},${lat-0.1},${lon+0.1},${lat+0.1}`)
+        .then(res => res.json())
+        .then(data => {
+            let chatbox = document.getElementById("chatbox");
+
+            chatbox.innerHTML += `
+                <div class="message bot">
+                    <div class="avatar">🤖</div>
+                    <div class="text"><b>Nearby Hospitals:</b></div>
+                </div>
+            `;
+
+            data.forEach(place => {
+                chatbox.innerHTML += `
+                    <div class="message bot">
+                        <div class="avatar">📍</div>
+                        <div class="text">
+                            ${place.display_name}<br>
+                            <a href="https://www.google.com/maps?q=${place.lat},${place.lon}" target="_blank">Open in Maps</a>
+                        </div>
+                    </div>
+                `;
+            });
+
+            chatbox.scrollTop = chatbox.scrollHeight;
+        });
+}
+
+// 💬 MAIN CHAT FUNCTION
+function sendMessage() {
+    let inputField = document.getElementById("userInput");
+    let input = inputField.value.trim();
+
+    console.log("Input:", input);
+
+    if (input === "") return;
+
+    let chatbox = document.getElementById("chatbox");
+
+    // Show user message FIRST
+    chatbox.innerHTML += `
+        <div class="message user">
+            <div class="text">${input}</div>
+        </div>
+    `;
+
+    chatbox.scrollTop = chatbox.scrollHeight;
+
+    inputField.value = "";
+
+    fetch("/get", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message: input })
+    })
+    .then(res => {
+        console.log("Response received");
+        return res.json();
+    })
+    .then(data => {
+        console.log("Data:", data);
+
+        chatbox.innerHTML += `
+            <div class="message bot">
+                <div class="avatar">🤖</div>
+                <div class="text">${data.reply}</div>
+            </div>
+        `;
+
+        speak(data.reply); // 🔊 voice output
+
+        chatbox.scrollTop = chatbox.scrollHeight;
+    })
+    .catch(err => {
+        console.error("ERROR:", err);
+
+        chatbox.innerHTML += `
+            <div class="message bot">
+                <div class="avatar">⚠️</div>
+                <div class="text">Something went wrong. Please try again.</div>
+            </div>
+        `;
+    });
+}
+
+// ⌨️ ENTER KEY SUPPORT
+document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById("userInput").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+});
+
+</script>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <h1>NeuroStep</h1>
+        <p>GaitAssist AI Chatbot</p>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="chat-box" id="chatbox">
+        <div class="message bot">
+            <div class="avatar">🤖</div>
+            <div class="text">Hello! Ask me anything about gait analysis.</div>
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Type your question..." />
+        
+        <button onclick="startListening()">🎤</button>
+        <button onclick="findHospitals()">🏥</button>
+        <button onclick="sendMessage()">➤</button>
+    </div>
+
+</div>
+
+</body>
+</html>
