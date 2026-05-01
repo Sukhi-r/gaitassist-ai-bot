@@ -93,6 +93,12 @@ gaitassist-ai-bot/
 
 ---
 
+## Demo
+
+![Chatbot UI](images/ui.png)
+
 ## Conclusion
 
 This project demonstrates the use of Natural Language Processing and web technologies to build an interactive chatbot for healthcare-related applications. It highlights how AI-based systems can be used to improve accessibility and awareness in the domain of gait analysis.
+
+
